@@ -1,72 +1,41 @@
-{-# LANGUAGE ConstraintKinds, DataKinds, DeriveDataTypeable,
-             FlexibleContexts, FlexibleInstances,
-             GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-              PolyKinds, 
-             RoleAnnotations, ScopedTypeVariables, 
-             StandaloneDeriving, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables, ConstraintKinds, Rank2Types #-}
+
 import Data.Proxy
-import Reflects
+import Data.Reflection as Ref
 import Text.Printf
-import Unsafe.Coerce as Yolo
-import GHC.TypeLits  as TL
-import Data.Typeable
-newtype Zn n i = Zn i deriving (Eq, Show)
 
-type ReflectsTI n i = (Reflects n i, Integral i)
+data Zn n a = Zn !a !a
 
-type role Zn representational representational
-instance (ReflectsTI n i) => Num (Zn n i) where
+instance (Integral a) => Eq (Zn n a) where
+  Zn n x == Zn _ y = mod (x - y) n == 0
 
-  (+) = let nval = value (Proxy::Proxy n)
-        in \ (Zn x) (Zn y) ->
-        let z = x + y
-        in Zn ( z `mod` nval)
+instance (Integral a, Show a) => Show (Zn n a) where
+  show (Zn n x) = printf "(%s mod %s)" (show (mod x n)) (show n)
 
-  (-) = let nval = value (Proxy::Proxy n)
-        in \ (Zn x) (Zn y) ->
-        let z = x - y
-        in Zn ( z `mod` nval)
-
-  (*) = let nval = value (Proxy:: Proxy n)
-        in \ (Zn x) (Zn y) ->
-        let z = x *y
-        in Zn (z `mod` nval) 
-
-  negate = let nval = value (Proxy::Proxy n)
-           in \ (Zn x) ->
-           let z = (nval - x) 
-           in Zn ( z `mod` nval)
-
+instance (Integral a, Reifies n a) => Num (Zn n a) where
+--  Zn n x + Zn _ y = Zn n (mod (x + y) n)
+  Zn n x + Zn _ y = Zn (fromIntegral n) $ withModulus' n (fromIntegral x + fromIntegral y)
+  Zn n x - Zn _ y = Zn n (mod (x - y) n)
+  Zn n x * Zn _ y = Zn n (mod (x * y) n)
+  negate (Zn n x) = Zn n (n - x)
   abs = id
+  signum x@(Zn _ 0) = x
+  signum (Zn n _) = Zn n 1
+  fromInteger x = Zn n (mod (fromInteger x) n)
+    where n = reflect (Proxy :: Proxy n)
 
-  signum x @(Zn 0) = x
-  signum (Zn _) = Zn 1
-  
-  fromInteger x = Zn (mod (fromInteger x) n)
-    where n = value (Proxy :: Proxy n)
-          
-znToIntegral :: (ReflectsTI n i) => Zn n i -> i
-znToIntegral (Zn i) = i
+znToInteger :: Integral a => Zn n a -> a
+znToInteger (Zn n x) = fromIntegral x
 
 
-
-{--reduce' :: forall i n. (ReflectsTI n i) => i -> Zn n i 
-reduce' = Yolo.unsafeCoerce . (`mod` proxy value (Proxy::Proxy n))                  --       value = return $ fromIntegral $ natVal (Proxy::Proxy a)--}
-
-
-getModulus :: forall i n. (Integral i, Reflects n i) => Zn n i -> Zn n i
-getModulus (Zn x) = Zn $ value (Proxy::Proxy n)
+withModulus :: forall a b. (Integral a) => a ->
+               (forall n. (Reifies n a) => (a -> Zn n a) ->
+                (Zn n a -> a) -> b) -> b
+withModulus n k = reify n $ \(_ :: Proxy n) ->
+  k (\x -> Zn n (mod x n) :: Zn n a) (\(Zn _ x) -> x)
 
 
-
-
-
-
-
-
-
-
-
-
-
-    
+withModulus' :: forall a. (Integral a) => a -> (forall n. (Reifies n a) => Zn n a) -> a
+withModulus' n mx = reify n $ \(_ :: Proxy n) ->
+            case mx :: Zn n a of
+              Zn _ x -> x

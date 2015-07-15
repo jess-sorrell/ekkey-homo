@@ -1,47 +1,71 @@
-{-# LANGUAGE Rank2Types, UndecidableInstances, TypeFamilies #-}
-{-# LANGUAGE ConstraintKinds, KindSignatures, PolyKinds, TypeOperators #-}
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE FlexibleContexts #-}
+ {-# LANGUAGE FlexibleContexts, ConstraintKinds, PolyKinds, ScopedTypeVariables, RankNTypes, DataKinds #-}
 
-
-import qualified Algebra.Additive   as Additive (C(..))
-import qualified Algebra.Module     as Module 
-import qualified Algebra.Ring       as Ring (C(..)) 
-import           Data.Traversable   as DT
-import qualified Number.ResidueClass as RC
-import Data.Natural
-import Data.Reflection (Reifies, reflect, reify)
 import Data.Proxy
+import Data.Reflection
+import Text.Printf
+import qualified Unsafe.Coerce as Yolo
+import qualified GHC.TypeLits  as TL
+import qualified Algebra.Additive as Additive(C)
 
-class ReifiesInt n where
-  reflect :: Proxy n -> Int
+newtype Zn n i = Zn i deriving (Eq)
 
-newtype Zq q = Zq Integer deriving (Eq, Ord, Show)
+type ReifiesTI n i = (Reifies n i, Integral i)
 
-data Modulus s = M {getModulus :: Integer}
-type Modular s = Reifies s Integer
+instance (ReifiesTI n i) => Show (Zn n i) where
+  show z = show $ znToInteger z
 
-normalize :: forall s . Modular s => Integer -> Modulus s
-normalize n = M (mod n modulus) where
-  modulus = Data.Reflection.reflect (Proxy :: Proxy s)
+instance (ReifiesTI n i) => Num (Zn n i) where
+  
+  (+) = let nval = reflect (Proxy::Proxy n)
+        in \ (Zn x) (Zn y) ->
+        let z = x + y
+        in Zn ( z `mod` nval)
 
-instance Modular s => Num (Modulus s) where
-  M a + M b = normalize (a + b)
-  M a * M b = normalize (a * b)
+  (-) = let nval = reflect (Proxy::Proxy n)
+        in \ (Zn x) (Zn y) ->
+        let z = x - y
+        in Zn ( z `mod` nval)
 
-withModulus :: Integer -> (forall s . Modular s =>  Modulus s) -> Integer
-withModulus m v = Data.Reflection.reify m (getModulus . asProxyOf v)
-                  where asProxyOf :: f s -> Proxy s -> f s
-                        asProxyOf = const
-{--instance (ReifiesInt q) => Num (Zq q) where
-  Zq x + Zq y = Zq (x + y `mod` reflect ([]:[q])) --}
-{--
-instance Pos q => Show (Zq q) where
-  show (Zq q) = show q
+  (*) = let nval = reflect (Proxy:: Proxy n)
+        in \ (Zn x) (Zn y) ->
+        let z = x *y
+        in Zn (z `mod` nval) 
 
-instance Natural q => Num (Zq q) where
-  Zq x + Zq y = Zq $ (x+y) `mod`  (undefined::n)
-  Zq x * Zq y = Zq $ (x*y) `mod`  (undefined::n) 
-  negate (Zq x) = Zq $ (negate x) `mod`  (undefined::n)
-  fromInteger x = Zq $ fromInteger $ x `mod`  (undefined::n)--}
+  negate = let nval = reflect (Proxy::Proxy n)
+           in \ (Zn x) ->
+           let z = (nval - x) 
+           in Zn ( z `mod` nval)
+
+  abs = id
+
+  signum x @(Zn 0) = x
+  signum (Zn _) = Zn 1
+  
+  fromInteger x = Zn (mod (fromInteger x) n)
+    where n = reflect (Proxy :: Proxy n)
+          
+znToInteger :: (ReifiesTI n i) => Zn n i -> Integer
+znToInteger (Zn i) = fromIntegral i
+
+
+
+reduce' :: forall i n. (ReifiesTI n i) => i -> Zn n i 
+reduce' = Yolo.unsafeCoerce . (`mod` reflect (Proxy::Proxy n))                  --       value = return $ fromIntegral $ natVal (Proxy::Proxy a)
+
+
+getModulus :: forall i n. (Integral i, Reifies n i) => Zn n i -> Zn n i
+getModulus (Zn x) = Zn $ reflect (Proxy::Proxy n)
+
+
+
+
+
+
+
+
+
+
+
+
+
+    

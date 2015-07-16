@@ -1,41 +1,42 @@
-{-# LANGUAGE ScopedTypeVariables, ConstraintKinds, Rank2Types #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 
+import Data.Reflection
 import Data.Proxy
-import Data.Reflection as Ref
 import Text.Printf
 
-data Zn n a = Zn !a !a
+newtype Zn a s = Zn { getZ :: a }
 
-instance (Integral a) => Eq (Zn n a) where
-  Zn n x == Zn _ y = mod (x - y) n == 0
+instance (Integral a, Show a, Reifies s a) => Show (Zn a s) where
+       show x = 
+           let 
+               p = reflect (Proxy::Proxy s)           
+           in
+               printf "(%s mod %s)" (show (mod (getZ x) p)) (show p)
 
-instance (Integral a, Show a) => Show (Zn n a) where
-  show (Zn n x) = printf "(%s mod %s)" (show (mod x n)) (show n)
-
-instance (Integral a, Reifies n a) => Num (Zn n a) where
---  Zn n x + Zn _ y = Zn n (mod (x + y) n)
-  Zn n x + Zn _ y = Zn (fromIntegral n) $ withModulus' n (fromIntegral x + fromIntegral y)
-  Zn n x - Zn _ y = Zn n (mod (x - y) n)
-  Zn n x * Zn _ y = Zn n (mod (x * y) n)
-  negate (Zn n x) = Zn n (n - x)
-  abs = id
-  signum x@(Zn _ 0) = x
-  signum (Zn n _) = Zn n 1
-  fromInteger x = Zn n (mod (fromInteger x) n)
-    where n = reflect (Proxy :: Proxy n)
-
-znToInteger :: Integral a => Zn n a -> a
-znToInteger (Zn n x) = fromIntegral x
+instance (Integral a, Reifies s a) => Num (Zn a s) where
+      Zn x + Zn y = Zn (mod (x + y) (reflect (Proxy::Proxy s)))
+      Zn x - Zn y = Zn (mod (x - y) (reflect (Proxy::Proxy s)))
+      Zn x * Zn y = Zn (mod (x * y) (reflect (Proxy::Proxy s)))
+      negate (Zn x) = Zn ((reflect (Proxy::Proxy s)) - x)
+      abs = id
+      signum x@(Zn 0) = x
+      signum _ = Zn 1
+      fromInteger x = Zn (mod (fromInteger x) p)
+            where p = reflect (Proxy :: Proxy s)
 
 
-withModulus :: forall a b. (Integral a) => a ->
-               (forall n. (Reifies n a) => (a -> Zn n a) ->
-                (Zn n a -> a) -> b) -> b
-withModulus n k = reify n $ \(_ :: Proxy n) ->
-  k (\x -> Zn n (mod x n) :: Zn n a) (\(Zn _ x) -> x)
+znToIntegral :: Integral a => Zn a s -> a
+znToIntegral (Zn x) = fromIntegral x
 
+-- Convince the compiler that the phantom type in the proxy
+-- is the same as the one in the Zn
+likeProxy :: Proxy s -> Zn a s -> Zn a s
+likeProxy _ = id
 
-withModulus' :: forall a. (Integral a) => a -> (forall n. (Reifies n a) => Zn n a) -> a
-withModulus' n mx = reify n $ \(_ :: Proxy n) ->
-            case mx :: Zn n a of
-              Zn _ x -> x
+withZn :: Integral a => a -> (forall s. Reifies s a => Zn a s) -> a
+withZn p z = reify p $ \proxy -> znToIntegral . likeProxy proxy $ z
+
+main :: IO ()
+main = print $ withZn (7::Int) (Zn 3 + Zn 5)

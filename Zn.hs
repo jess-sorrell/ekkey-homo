@@ -11,9 +11,9 @@ import Crypto.Random.DRBG
 import System.Random
 import Data.List
 
-newtype Zn a s = Zn { getZ :: a } 
+newtype Zn s a = Zn { getZ :: a } 
 
-instance (Integral a, Show a, Reifies s a) => Show (Zn a s) where
+instance (Integral a, Show a, Reifies s a) => Show (Zn s a) where
        show x = 
            let 
                p = reflect (Proxy::Proxy s)           
@@ -21,7 +21,7 @@ instance (Integral a, Show a, Reifies s a) => Show (Zn a s) where
                printf "(%s mod %s)" (show (mod (getZ x) p)) (show p)
 
 
-instance (Integral a, Reifies s a) => Num (Zn a s) where
+instance (Integral a, Reifies s a) => Num (Zn s a) where
       Zn x + Zn y = Zn (mod (x + y) (reflect (Proxy::Proxy s)))
       Zn x - Zn y = Zn (mod (x - y) (reflect (Proxy::Proxy s)))
       Zn x * Zn y = Zn (mod (x * y) (reflect (Proxy::Proxy s)))
@@ -33,43 +33,60 @@ instance (Integral a, Reifies s a) => Num (Zn a s) where
             where p = reflect (Proxy :: Proxy s)
 
 
-instance (Integral a, Random a, Reifies s a) => Random (Zn a s) where
+instance (Integral a, Random a, Reifies s a) => Random (Zn s a) where
     random = let high = reflect (Proxy::Proxy s) - 1
              in \g -> let (x,g') = randomR (0,high) g
                       in (Zn x, g')
     randomR _ = error "randomR non-sensical for Zq types"
 
 
-znToIntegral :: Integral a => Zn a s -> a
+znToIntegral :: Integral a => Zn s a -> a
 znToIntegral (Zn x) = fromIntegral x
 
 
 -- | Convince the compiler that the phantom type in the proxy
 -- | is the same as the one in the Zn
-likeProxy :: Proxy s -> Zn a s -> Zn a s
+likeProxy :: Proxy s -> Zn s a -> Zn s a
 likeProxy _ = id
 
 
-withZn :: Integral a => a -> (forall s. Reifies s a => Zn a s) -> a
-withZn p z = reify p $ \proxy -> znToIntegral . likeProxy proxy $ z
+withZn :: Integral a => a -> (forall s. Reifies s a => Zn s a) -> a
+withZn modulus z = reify modulus $ \proxy -> znToIntegral.likeProxy proxy $ z
 
 
--- | Given an Integral modulus and a number of desired integers, returns a
--- | list of random integers
+-- | Given a generator, Integral modulus and a number of desired integers,
+-- | returns a list of random integers
 getRandoms :: (Integral a, RandomGen g) => a -> Integer -> g -> [Integer]
-getRandoms modulus x g =
-  genericTake x $map (\n -> mod n (toInteger modulus)) $ randoms g::[Integer] 
+getRandoms modulus x gen =
+  genericTake x $map (\n -> mod n (toInteger modulus)) $ randoms gen::[Integer] 
 
 
 -- | Returns an integer mod n between -floor(n/2) and ceil(n/2)
 centeredLift :: (Integral a) => a -> a -> a
-centeredLift arg modulus
-  | (arg `mod` modulus) <= modulus `div` 2 = (arg `mod` modulus)
-  | otherwise = (arg `mod` modulus) - modulus
+centeredLift modulus x
+  | (x `mod` modulus) <= modulus `div` 2 = (x `mod` modulus)
+  | otherwise = (x `mod` modulus) - modulus
 
 
-getCenteredRandom :: (Integral a) => a -> Integer -> IO()
-getCenteredRandom = undefined
+getRandom :: (Integral a, Random a, RandomGen g) =>
+             a -> g -> (a, g)
+getRandom modulus gen = randomR (0, modulus - 1) gen
+                       
+
+
+getRandoms' :: (Integral b, Integral a, Random a, RandomGen g) =>
+               b -> a -> g -> ([a], g)
+getRandoms' 0 modulus gen =
+  let (x, gen') = getRandom modulus gen
+  in ([x], gen')
+getRandoms' num modulus gen =
+  let (xs, gen') = getRandoms' (num - 1) modulus gen
+  in
+   let (x, gen'') = getRandom modulus gen'
+   in ([x]++xs, gen'')
+  
+
+
 
 --main :: IO ()
 --main = print $ withZn (7::Int) (Zn 3 + Zn 5)

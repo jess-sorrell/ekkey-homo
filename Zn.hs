@@ -54,11 +54,10 @@ withZn :: Integral a => a -> (forall s. Reifies s a => Zn s a) -> a
 withZn modulus z = reify modulus $ \proxy -> znToIntegral.likeProxy proxy $ z
 
 
--- | Given a generator, Integral modulus and a number of desired integers,
 -- | returns a list of random integers
-getRandoms :: (Integral a, RandomGen g) => a -> Integer -> g -> [Integer]
-getRandoms modulus x gen =
-  genericTake x $map (\n -> mod n (toInteger modulus)) $ randoms gen::[Integer] 
+getRandoms :: (Integral a, Random a, RandomGen g) => a -> Integer -> g -> [a]
+getRandoms modulus num gen =
+  genericTake num $randomRs (0, modulus - 1) gen 
 
 
 -- | Returns an integer mod n between -floor(n/2) and ceil(n/2)
@@ -73,19 +72,10 @@ getRandom :: (Integral a, Random a, RandomGen g) =>
 getRandom modulus gen = randomR (0, modulus - 1) gen
                        
 
-
-getRandoms' :: (Integral b, Integral a, Random a, RandomGen g) =>
-               b -> a -> g -> ([a], g)
-getRandoms' 0 modulus gen =
-  let (x, gen') = getRandom modulus gen
-  in ([x], gen')
-getRandoms' num modulus gen =
-  let (xs, gen') = getRandoms' (num - 1) modulus gen
-  in
-   let (x, gen'') = getRandom modulus gen'
-   in ([x]++xs, gen'')
-  
-
+getCenteredRandoms :: (Integral a, Random a, RandomGen g) =>
+                      a -> Integer -> g -> [a]
+getCenteredRandoms modulus num gen =
+  map (centeredLift modulus) $ getRandoms modulus num gen
 
 
 --main :: IO ()

@@ -18,17 +18,19 @@ get_get_gadget modulus =
 go_go_gadget_expand :: (Integral a, Reifies s a) => Zn s a -> [Zn s a]
 go_go_gadget_expand (Zn 0) = [Zn 0]
 go_go_gadget_expand (Zn 1) = [Zn 1]
-go_go_gadget_expand (Zn x) = (Zn ( x `mod` 2)):(go_go_gadget_zn $ Zn (x `quot` 2))
+go_go_gadget_expand (Zn x) = (Zn ( x `mod` 2)):(go_go_gadget_expand $ Zn (x `quot` 2))
+
 
 go_go_gadget_vector :: (Integral a, Reifies s a) => [Zn s a] -> [Zn s a]
 go_go_gadget_vector [] = []
-go_go_gadget_vector (x:xs) = (go_go_gadget_zn x)++(go_go_gadget_vector xs)
+go_go_gadget_vector (x:xs) = (go_go_gadget_expand x)++(go_go_gadget_vector xs)
 
 
-go_go_gadget_compose :: (Integral a, Reifies s a) => [Zn s a] -> [Zn s a] -> [Zn s a]
-go_go_gadget_compose as expanded
-  | len expanded == len as = 
-  | len expanded `mod` len as == 0 =
-    let dim = len as
-    in take dim expanded 
-    | otherwise = error "What do you want me to do with this?"
+go_go_gadget_compose :: (Integral a, Reifies s a) => Integer -> [Zn s a] -> [Zn s a] -> [Zn s a]
+go_go_gadget_compose index as expanded
+  | length expanded == length as = convolve index as expanded
+  | length expanded `mod` length as == 0 =
+    let dim = length as
+    in (convolve index as (take dim expanded))++
+       (go_go_gadget_compose index as (drop dim expanded))
+  | otherwise = error "What do you want me to do with this?"

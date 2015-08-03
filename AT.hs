@@ -5,6 +5,9 @@ import Text.Printf
 import System.Random
 import Data.List
 
+import qualified Data.ByteString as B
+import Data.ByteString.Base16 as B16
+import qualified Data.ByteString.Char8 as B8
 
 import Zn
 import RandomTree
@@ -12,7 +15,9 @@ import Gadget
 import Poly
 
 
-calcAT :: (Integral b, Integral a, Reifies s a) => Tree Binary -> b -> a -> [Zn s a] -> [Zn s a] -> [Zn s a]
+
+calcAT :: (Integral b, Integral a) =>
+          Tree Binary -> b -> a -> [a] -> [a] -> [a]
 calcAT (Leaf Zero) _ _ a0 a1 = a0
 calcAT (Leaf One) _ _ a0 a1 = a1
 calcAt (Node l r) dim mod a0 a1 =
@@ -42,11 +47,21 @@ primeSieve lower upper =
     foldl (\candPrimes divr -> filter (\x -> x `mod` divr /= 0) candPrimes) range factors
 
 
-{--
+
+
 main :: IO ()
 main = do putStrLn "Seed please! "
-          seed <- reads getLine
+          seed <- toInteger $ read getLine
           putStrLn "And what dimensionality for your lattice today? "
-          dimension <- reads getLine
-          let g = mkStdGen
-              modulus = --}
+          dim <- toInteger $ read getLine
+          putStrLn "And what about a key value? "
+          key <- toInteger $ read getLine
+          putStrLn "So what're we encrypting? "
+          msg <- getLine
+          let gen = mkStdGen seed
+            in let (modulus, g') = genRandModulus (dim::Integer) gen
+               in let (a0, g'') = getCenteredRandoms (modulus::Integer) (dim::Integer) g'
+                  in let (a1, g''') = getCenteredRandoms modulus dim g''
+                     in let (tree, g'''') = toTree (B8.pack msg) g'''
+                        in print $ showZns modulus (calcAT tree dim modulus a0 a1 )
+                           

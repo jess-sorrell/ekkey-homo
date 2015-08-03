@@ -32,6 +32,7 @@ instance (Integral a, Reifies s a) => Num (Zn s a) where
             where p = reflect (Proxy :: Proxy s)
 
 
+
 instance (Integral a, Random a, Reifies s a) => Random (Zn s a) where
     random = let high = reflect (Proxy::Proxy s) - 1
              in \g -> let (x,g') = randomR (0,high) g
@@ -39,8 +40,10 @@ instance (Integral a, Random a, Reifies s a) => Random (Zn s a) where
     randomR _ = error "randomR non-sensical for Zq types"
 
 
+
 znToIntegral :: Integral a => Zn s a -> a
 znToIntegral (Zn x) = fromIntegral x
+
 
 
 -- | Convince the compiler that the phantom type in the proxy
@@ -49,14 +52,17 @@ likeProxy :: Proxy s -> Zn s a -> Zn s a
 likeProxy _ = id
 
 
+
 withZn :: Integral a => a -> (forall s. Reifies s a => Zn s a) -> a
 withZn modulus z = reify modulus $ \proxy -> znToIntegral.likeProxy proxy $ z
+
 
 
 -- | returns a list of random integers
 getRandoms :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> g -> [a]
 getRandoms modulus num gen =
   genericTake num $randomRs (0, modulus - 1) gen 
+
 
 
 -- | Returns an integer mod n between -floor(n/2) and ceil(n/2)
@@ -66,15 +72,11 @@ centeredLift modulus x
   | otherwise = (x `mod` modulus) - modulus
 
 
+
 getRandom :: (Integral a, Random a, RandomGen g) =>
              a -> g -> (a, g)
 getRandom modulus gen = randomR (0, modulus - 1) gen
                        
-{--
-getCenteredRandoms :: (Integral a, Integral b, Random a, RandomGen g) =>
-                      a -> b -> g -> [a]
-getCenteredRandoms modulus num gen =
-  map (centeredLift modulus) $ getRandoms modulus num gen--}
 
 
 getCenteredRandoms :: (Integral a, Integral b, Random a, RandomGen g) =>
@@ -87,15 +89,17 @@ getCenteredRandoms modulus num gen =
    in ( (centeredLift modulus rand):rands, gen'')
 
 
-getCenteredZns :: (Integral a, Integral b, Random a, RandomGen g, Reifies s a) => a -> b -> g -> ([Zn s a], g)
-getCenteredZns modulus num gen =
-  let (rands, gen') = getCenteredRandoms modulus num gen
-  in (map Zn rands, gen')
+
+{--
+getCenteredZns :: (Integral a, Random a, RandomGen g, Reifies s a) => a -> a -> g -> ([a], g)
+getCenteredZns modulus num gen = getCenteredRandoms modulus num gen --}
 
 
 
 
-
+showZns :: (Integral a, Reifies s a) => a -> ([Zn s a]) -> [a]
+showZns modulus [] = []
+showZns modulus ((Zn x):xs) = (withZn modulus (Zn x )):(showZns modulus xs)
 
 --main :: IO ()
 --main = print $ withZn (7::Int) (Zn 3 + Zn 5)

@@ -17,14 +17,14 @@ import Poly
 
 
 calcAT :: (Integral b, Integral a) =>
-          Tree Binary -> b -> a -> [a] -> [a] -> [a]
+          Tree Binary -> a -> b -> [a] -> [a] -> [a]
 calcAT (Leaf Zero) _ _ a0 a1 = a0
 calcAT (Leaf One) _ _ a0 a1 = a1
-calcAt (Node l r) dim mod a0 a1 =
-  let leftAT = calcAt l dim mod a0 a1
+calcAT (Node l r) modulus dim a0 a1 =
+  let leftAT = calcAT l modulus dim a0 a1
   in
-   let rightAT = calcAt r dim mod a0 a1
-   in go_go_gadget_compose dim leftAT rightAT
+   let rightAT = calcAT r modulus dim a0 a1
+   in go_go_gadget_innerproduct modulus dim leftAT rightAT
 
 
 
@@ -51,17 +51,23 @@ primeSieve lower upper =
 
 main :: IO ()
 main = do putStrLn "Seed please! "
-          seed <- toInteger $ read getLine
+          seed <- getLine
           putStrLn "And what dimensionality for your lattice today? "
-          dim <- toInteger $ read getLine
+          dimension <- getLine
           putStrLn "And what about a key value? "
-          key <- toInteger $ read getLine
+          keyVal <- getLine
           putStrLn "So what're we encrypting? "
           msg <- getLine
-          let gen = mkStdGen seed
-            in let (modulus, g') = genRandModulus (dim::Integer) gen
-               in let (a0, g'') = getCenteredRandoms (modulus::Integer) (dim::Integer) g'
-                  in let (a1, g''') = getCenteredRandoms modulus dim g''
-                     in let (tree, g'''') = toTree (B8.pack msg) g'''
-                        in print $ showZns modulus (calcAT tree dim modulus a0 a1 )
-                           
+          let dim = toInteger $ read dimension
+           in
+           let key = toInteger $ read keyVal
+           in
+           let gen = mkStdGen $ read seed
+           in let (modulus, g') = genRandModulus (dim::Integer) gen
+              in let (a0, g'') = getRandoms (modulus::Integer) (dim::Integer) g'
+                 in let (a1, g''') = getRandoms modulus dim g''
+                    in let (tree, g'''') = toTree (B8.pack msg) g'''
+                       in print $ go_go_gadget_vector modulus a1
+
+                          
+--print  (calcAT tree modulus dim a0 a1 )

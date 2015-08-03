@@ -59,10 +59,13 @@ withZn modulus z = reify modulus $ \proxy -> znToIntegral.likeProxy proxy $ z
 
 
 -- | returns a list of random integers
-getRandoms :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> g -> [a]
+getRandoms :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> g -> ([a], g)
+getRandoms modulus 0 gen = ([], gen)
 getRandoms modulus num gen =
-  genericTake num $randomRs (0, modulus - 1) gen 
-
+  let (rand, gen') = getRandom modulus gen
+  in
+   let (rands, gen'') = getRandoms modulus (num-1) gen'
+   in (rand:rands, gen'')
 
 
 -- | Returns an integer mod n between -floor(n/2) and ceil(n/2)

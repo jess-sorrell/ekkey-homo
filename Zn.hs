@@ -7,7 +7,6 @@ module Zn where
 import Data.Reflection
 import Data.Proxy
 import Text.Printf
-import Crypto.Random.DRBG
 import System.Random
 import Data.List
 
@@ -55,7 +54,7 @@ withZn modulus z = reify modulus $ \proxy -> znToIntegral.likeProxy proxy $ z
 
 
 -- | returns a list of random integers
-getRandoms :: (Integral a, Random a, RandomGen g) => a -> Integer -> g -> [a]
+getRandoms :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> g -> [a]
 getRandoms modulus num gen =
   genericTake num $randomRs (0, modulus - 1) gen 
 
@@ -71,12 +70,33 @@ getRandom :: (Integral a, Random a, RandomGen g) =>
              a -> g -> (a, g)
 getRandom modulus gen = randomR (0, modulus - 1) gen
                        
-
-getCenteredRandoms :: (Integral a, Random a, RandomGen g) =>
-                      a -> Integer -> g -> [a]
+{--
+getCenteredRandoms :: (Integral a, Integral b, Random a, RandomGen g) =>
+                      a -> b -> g -> [a]
 getCenteredRandoms modulus num gen =
-  map (centeredLift modulus) $ getRandoms modulus num gen
+  map (centeredLift modulus) $ getRandoms modulus num gen--}
+
+
+getCenteredRandoms :: (Integral a, Integral b, Random a, RandomGen g) =>
+                      a -> b -> g -> ([a], g)
+getCenteredRandoms modulus 0 gen = ([], gen)
+getCenteredRandoms modulus num gen =
+  let (rand, gen') = getRandom modulus gen
+  in
+   let (rands, gen'') = getCenteredRandoms modulus (num-1) gen'
+   in ( (centeredLift modulus rand):rands, gen'')
+
+
+getCenteredZns :: (Integral a, Integral b, Random a, RandomGen g, Reifies s a) => a -> b -> g -> ([Zn s a], g)
+getCenteredZns modulus num gen =
+  let (rands, gen') = getCenteredRandoms modulus num gen
+  in (map Zn rands, gen')
+
+
+
+
 
 
 --main :: IO ()
 --main = print $ withZn (7::Int) (Zn 3 + Zn 5)
+

@@ -13,16 +13,16 @@ data Tree a = Leaf a | Node (Tree a) (Tree a)
 data Binary = One | Zero deriving (Show, Eq)
 
 
-randomTree :: (RandomGen g) => g -> [Binary] -> (Tree Binary, g)
-randomTree gen [] = error "No value with which to make tree"
-randomTree gen [x] = (Leaf x, gen)
-randomTree gen xs =
-  let (leftLen, g') = randomR (1, length xs) gen
+randomTree :: (RandomGen g) => [Binary] -> g -> (Tree Binary, g)
+randomTree [] gen = error "No value with which to make tree"
+randomTree [x] gen = (Leaf x, gen)
+randomTree xs gen =
+  let (leftLen, gen') = randomR (1, length xs) gen
   in
-     let (leftTree, g'') = randomTree g' (take leftLen xs)
+     let (leftTree, gen'') = randomTree (take leftLen xs) gen'
      in
-      let (rightTree, g''') = randomTree g'' (drop leftLen xs)
-      in (Node leftTree rightTree, g''')
+      let (rightTree, gen''') = randomTree (drop leftLen xs) gen''
+      in (Node leftTree rightTree, gen''')
 
 
 
@@ -46,3 +46,7 @@ toBinary xs
   | B8.head xs == 'e' = [One, One, One, Zero] ++ (toBinary $ B8.drop 1 xs)
   | B8.head xs == 'f' = [One, One, One, One] ++ (toBinary $ B8.drop 1 xs)
                         
+
+
+toTree :: (RandomGen g) =>  B8.ByteString -> g -> (Tree Binary, g)
+toTree msg gen = randomTree (toBinary (B16.encode msg)) gen

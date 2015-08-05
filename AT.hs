@@ -1,6 +1,3 @@
-
-
-
 import System.Random
 import Data.List
 
@@ -46,6 +43,8 @@ primeSieve lower upper =
     foldl (\candPrimes divr -> filter (\x -> x `mod` divr /= 0) candPrimes) range factors
 
 
+ringSwitch :: (Integral a) => a -> a -> [[a]] -> [[a]]
+ringSwitch p q vec = map (\xs -> (map round (map (\x -> (toRational(q)/toRational(p))*(toRational x)) xs))) vec
 
 
 main :: IO ()
@@ -55,19 +54,24 @@ main = do putStrLn "Seed please! "
           dimension <- getLine
           putStrLn "And what about a key value? "
           keyVal <- getLine
-          putStrLn "So what're we encrypting? "
+          putStrLn "So what're we randomizing? "
           msg <- getLine
+          putStrLn "Excellent choice! "
           let dim = toInteger $ read dimension
-           in
-            let key = toInteger $ read keyVal
-            in
-             let gen = mkStdGen $ read seed
-             in let (modulus, g') = genRandModulus dim gen
-                in let l = ceiling $ logBase 2 $ fromIntegral modulus
-                in let (a0, g'') = getRandomVectors modulus dim l g'
-                   in let (a1, g''') = getRandomVectors modulus dim l g''
-                      in let (tree, g'''') = toTree (B8.pack msg) g'''
-                         in print $ calcAT tree modulus dim a0 a1
+            in let key = toInteger $ read keyVal
+               in let gen = mkStdGen $ read seed
+                  in let (p, g') = genRandModulus dim gen
+                     in let (q, g'') = genRandModulus dim g'
+                            modulus = minimum [p, q]
+                            target = maximum [p, q]
+                        in let l = ceiling $ logBase 2 $ fromIntegral modulus
+                           in let (a0, g''') = getRandomVectors modulus dim l g'
+                              in let (a1, g'''') = getRandomVectors modulus dim l g''
+                                 in let (tree, g''''') = toTree (B8.pack msg) g'''
+                                    in let at = calcAT tree modulus dim a0 a1
+                                           output = ringSwitch modulus target at
+                                           in print output
+                                       
        
                           
 --print  (calcAT tree modulus dim a0 a1 )

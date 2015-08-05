@@ -63,6 +63,14 @@ go_go_gadget_pad modulus x =
     ([0 | i <- [0..pad]]++xs)
 
 
+go_go_gadget_compose :: (Integral a, Integral b) => a -> b -> [[a]] -> [[[a]]] -> [[a]]
+go_go_gadget_compose modulus dim row mat = map (polydot modulus dim row) mat
+
+
+polydot :: (Integral a, Integral b) => a -> b -> [[a]] -> [[a]] -> [a]
+polydot modulus dim v1 v2 = reduce modulus dim $ foldl (+) [0 | i <- [0..((length v1)-1)]] $ zipWith (convolve modulus dim) v1 v2
+
+
 
 {--
 go_go_gadget_compose' :: (Integral a, Integral b) => a -> b -> [a] -> [[a]] -> [a]

@@ -56,6 +56,20 @@ keyedRingSwitch s modulus dim target vec =
   in
    ringSwitch modulus target sAT
 
+
+
+-- Given a dimension, return reasonable values for source modulus,
+-- target modulus, and random vectors a0 and a1
+parameters :: (Integral a, Random a, RandomGen g) => a -> g -> ((a, a, [[a]], [[a]]), g)
+parameters dim gen =
+  let (modulus, g') = genRandModulus dim gen
+      (target, g'') = getRandom modulus g' 
+      l = ceiling $ logBase 2 $ fromIntegral modulus
+      (a0, g''') = getRandomVectors modulus dim l g''
+      (a1, g'''') = getRandomVectors modulus dim l g'''
+  in ((modulus, target, a0, a1), g'''')
+     
+
 main :: IO ()
 main = do putStrLn "Seed please! "
           seed <- getLine
@@ -66,15 +80,11 @@ main = do putStrLn "Seed please! "
           putStrLn "Excellent choice! "
           let dim = toInteger $ read dimension
               gen = mkStdGen $ read seed
-              (modulus, g') = genRandModulus dim gen
-              target = 2*modulus
-              l = ceiling $ logBase 2 $ fromIntegral modulus
-              (a0, g'') = getRandomVectors modulus dim l g'
-              (a1, g''') = getRandomVectors modulus dim l g''
-              (tree, g'''') = toTree (B8.pack msg) g'''
+              ((modulus, target, a0, a1), g') = parameters dim gen
+              (tree, g'') = toTree (B8.pack msg) g'
               at = calcAT tree modulus dim a0 a1
-              (key, g''''') = getRandoms modulus dim g''''
-              (key1, g'''''') = getRandoms modulus dim g'''''
+              (key, g''') = getRandoms modulus dim g''
+              (key1, g'''') = getRandoms modulus dim g'''
               key2 = reduce modulus dim (key - key1)
               output = keyedRingSwitch key modulus dim target at
               out1 = keyedRingSwitch key1 modulus dim target at

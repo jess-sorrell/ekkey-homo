@@ -68,6 +68,18 @@ getRandoms modulus num gen =
    in (rand:rands, gen'')
 
 
+
+getRandomVectors :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> a -> g -> ([[a]], g)
+getRandomVectors modulus dim 0 gen = ([], gen)
+getRandomVectors modulus dim num gen =
+  let (vect, gen') = getRandoms modulus dim gen
+  in
+   let (vects, gen'') = getRandomVectors modulus dim (num-1) gen'
+   in (vect:vects, gen'')
+
+  
+
+   
 -- | Returns an integer mod n between -floor(n/2) and ceil(n/2)
 centeredLift :: (Integral a) => a -> a -> a
 centeredLift modulus x
@@ -90,13 +102,6 @@ getCenteredRandoms modulus num gen =
   in
    let (rands, gen'') = getCenteredRandoms modulus (num-1) gen'
    in ( (centeredLift modulus rand):rands, gen'')
-
-
-
-{--
-getCenteredZns :: (Integral a, Random a, RandomGen g, Reifies s a) => a -> a -> g -> ([a], g)
-getCenteredZns modulus num gen = getCenteredRandoms modulus num gen --}
-
 
 
 

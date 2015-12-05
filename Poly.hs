@@ -64,19 +64,19 @@ modPolyByCyclo index coeffs = secondFold firstFold
 -- the coefficients from n/2 to n-1 should be subtracted from the 0 to (n/2 -1) -- coefficients, the coefficients from n to n + (n/2 -1) should be added
 -- etc, etc
   where firstFold = [sum [ coeffs!!x | x <- [0.. (genericLength coeffs) - 1], (toInteger x) `mod` index == i ] | i <- [0..(index - 1)] ] 
-        secondFold = (\x -> (genericTake (index `quot` (toInteger 2)) x) - ( genericDrop (index `quot` (toInteger 2)) x))
+        secondFold = (\x -> (genericTake ((toInteger index) `quot` 2) x) - ( genericDrop (index `quot` (toInteger 2)) x))
 
 
-reduce :: (Integral a) => a -> Integer -> [a] -> [a]
-reduce modulus index coeffs = secondFold firstFold
-  where firstFold = [sum [ coeffs!!x | x <- [0.. (genericLength coeffs) - 1], (toInteger x) `mod` index == i ] `mod` modulus | i <- [0..(index - 1)]  ] 
-        secondFold = (\ys -> (genericTake (index `quot` (toInteger 2)) ys) - ( genericDrop (index `quot` (toInteger 2)) ys))
+reduce :: (Integral a, Integral b) => a -> b -> [a] -> [a]
+reduce modulus dim coeffs = secondFold firstFold
+  where firstFold = [sum [ coeffs!!x | x <- [0.. (genericLength coeffs) - 1], (toInteger x) `mod` (toInteger dim) == (toInteger i) ] `mod` modulus | i <- [0..(dim - 1)]  ] 
+        secondFold = (\ys -> (genericTake dim ys) - ( genericDrop dim ys))
 
 
 
 
-convolve :: (Integral a) => a -> Integer -> [a] -> [a] -> [a]
-convolve modulus index p1 p2 = reduce modulus index (p1*p2)
+convolve :: (Integral a, Integral b) => a -> b -> [a] -> [a] -> [a]
+convolve modulus dim p1 p2 = reduce modulus dim (p1*p2)
 
 
 likePolyProxy :: Proxy c -> Poly c a -> Poly c a
@@ -88,12 +88,8 @@ polyToList (Poly x) = map fromIntegral x
 
 
 withCycl :: Integral a => a -> (forall c. Reifies c a => Poly c a) -> [a]
-withCycl index poly =
-  reify index $ \proxy -> polyToList . likePolyProxy proxy $ poly 
-
-{--
-getRandom :: (Integral a, Random a, RandomGen  g) => a -> Integer -> g -> [a]
-getRandom = getCenteredRandoms --}
+withCycl dim poly =
+  reify dim $ \proxy -> polyToList . likePolyProxy proxy $ poly 
 
 
 znListToIntList :: Integral a => [Zn s a] -> [a]

@@ -3,21 +3,21 @@
 module RandomTree where
 
 import System.Random
-
 import qualified Data.ByteString as B
 import Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 
 
-data Tree a = Leaf a | Node (Tree a) (Tree a)
+data Tree a = Leaf a | Node (Tree a) (Tree a) deriving (Show, Eq)
 data Binary = One | Zero deriving (Show, Eq)
 
 
 randomTree :: (RandomGen g) => [Binary] -> g -> (Tree Binary, g)
 randomTree [] gen = error "No value with which to make tree"
 randomTree [x] gen = (Leaf x, gen)
+randomTree (x:y:[]) gen = (Node (Leaf x) (Leaf y), gen)
 randomTree xs gen =
-  let (leftLen, gen') = randomR (1, length xs) gen
+  let (leftLen, gen') = randomR (1, ((length xs) - 1)) gen
   in
      let (leftTree, gen'') = randomTree (take leftLen xs) gen'
      in

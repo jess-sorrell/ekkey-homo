@@ -2,15 +2,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 
---import Math.Polynomial
 import Data.Reflection
 import Data.Proxy
 import Text.Printf
 import Zn
 
-newtype Cycl c a = Cycl {getCoeffs :: [a]}
+{-- Polynomials are parameterized by c, the cyclotomic index by which they're
+    modded out, and by an [a] list of coefficients, least significant first --}
+newtype Poly c a = Poly {getCoeffs :: [a]}
 
-instance (Integral a, Show a) => Show (Cycl c a) where
+
+instance (Integral a, Show a) => Show (Poly c a) where
        show x = foldl (++) "f(x) = " $ map show $ getCoeffs x
 
 
@@ -31,18 +33,22 @@ instance Num a => Num [a] where
    negate        = map (\x -> -x)
 
 
-{-- Cycl is an instance of num --}
-instance (Num a, Reifies c Integer) => Num (Cycl c a) where
-      Cycl f + Cycl g = Cycl (modPoly (f + g) (reflect (Proxy::Proxy c)))
-      Cycl f - Cycl g = Cycl (modPoly (f - g) (reflect (Proxy::Proxy c)))
-      Cycl f * Cycl g = Cycl (modPoly (f * g) (reflect (Proxy::Proxy c)))
-      negate (Cycl f) = Cycl (negate f)
+{-- Poly is an instance of num --}
+instance (Integral a, Reifies c Integer) => Num (Poly c a) where
+      Poly f + Poly g = Poly (modPolyByCyclo (f + g) (reflect (Proxy::Proxy c)))
+      Poly f - Poly g = Poly (modPolyByCyclo (f - g) (reflect (Proxy::Proxy c)))
+      Poly f * Poly g = Poly (modPolyByCyclo (f * g) (reflect (Proxy::Proxy c)))
+      negate (Poly f) = Poly (negate f)
       abs = id
-      signum (Cycl [zero]) = Cycl [0]
-      signum _ = Cycl [1]
-      fromInteger x = Cycl ( modPoly [fromInteger x] p)
+      signum (Poly [zero]) = Poly [0]
+      signum _ = Poly [1]
+      fromInteger x = Poly ( modPolyByCyclo [fromInteger x] p)
             where p = reflect (Proxy :: Proxy c)
 
 
-modPoly :: (Num a) => [a] -> Integer -> [a]
-modPoly = undefined
+{-- Integer represents the index of the cyclotomic polynomial that we are
+    using as a modulus. Should be a power of two or this is meaningless --}
+modPolyByCyclo :: (Integral a) => [a] -> Integer -> [a]
+modPolyByCyclo coeffs index
+  | (length coeffs) < index/2 = coeffs
+  | otherwise = undefined

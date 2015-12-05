@@ -8,7 +8,7 @@ import qualified Data.ByteString.Char8 as B8
 import Zn
 import RandomTree
 import Gadget
-
+import Poly
 
 
 
@@ -43,35 +43,62 @@ primeSieve lower upper =
     foldl (\candPrimes divr -> filter (\x -> x `mod` divr /= 0) candPrimes) range factors
 
 
-ringSwitch :: (Integral a) => a -> a -> [[a]] -> [[a]]
-ringSwitch p q vec = map (\xs -> (map round (map (\x -> (toRational(q)/toRational(p))*(toRational x)) xs))) vec
 
+
+ringSwitch :: (Integral a) => a -> a -> [[a]] -> [[a]]
+ringSwitch modulus target vec = map (\xs -> (map round (map (\x -> (toRational(target)/toRational(modulus))*(toRational x)) xs))) vec
+
+
+
+keyedRingSwitch :: (Integral a, Integral b) => [a] -> a -> b -> a -> [[a]] -> [[a]]
+keyedRingSwitch s modulus dim target vec =
+  let sAT = dot modulus dim s vec
+  in
+   ringSwitch modulus target sAT
 
 main :: IO ()
 main = do putStrLn "Seed please! "
           seed <- getLine
           putStrLn "And what dimensionality for your lattice today? "
           dimension <- getLine
-          putStrLn "And what about a key value? "
-          keyVal <- getLine
           putStrLn "So what're we randomizing? "
           msg <- getLine
           putStrLn "Excellent choice! "
           let dim = toInteger $ read dimension
-            in let key = toInteger $ read keyVal
-               in let gen = mkStdGen $ read seed
-                  in let (p, g') = genRandModulus dim gen
-                     in let (q, g'') = genRandModulus dim g'
-                            modulus = minimum [p, q]
-                            target = maximum [p, q]
-                        in let l = ceiling $ logBase 2 $ fromIntegral modulus
-                           in let (a0, g''') = getRandomVectors modulus dim l g'
-                              in let (a1, g'''') = getRandomVectors modulus dim l g''
-                                 in let (tree, g''''') = toTree (B8.pack msg) g'''
-                                    in let at = calcAT tree modulus dim a0 a1
-                                           output = ringSwitch modulus target at
-                                           in print output
-                                       
+              gen = mkStdGen $ read seed
+              (modulus, g') = genRandModulus dim gen
+              target = 2*modulus
+              l = ceiling $ logBase 2 $ fromIntegral modulus
+              (a0, g'') = getRandomVectors modulus dim l g'
+              (a1, g''') = getRandomVectors modulus dim l g''
+              (tree, g'''') = toTree (B8.pack msg) g'''
+              at = calcAT tree modulus dim a0 a1
+              (key, g''''') = getRandoms modulus dim g''''
+              (key1, g'''''') = getRandoms modulus dim g'''''
+              key2 = reduce modulus dim (key - key1)
+              output = keyedRingSwitch key modulus dim target at
+              out1 = keyedRingSwitch key1 modulus dim target at
+              out2 = keyedRingSwitch key2 modulus dim target at
+            in do putStrLn "Using base modulus "
+                  putStrLn (show modulus)
+                  putStrLn "Using target modulus "
+                  putStrLn (show target)
+                  putStrLn "Hashing with full key "
+                  putStrLn $ show key
+                  putStrLn "Yields output: "
+                  putStrLn $ show output
+                  putStrLn "Hashing with key: "
+                  putStrLn $ show key1
+                  putStrLn "Yields output: "
+                  putStrLn $ show out1
+                  putStrLn "Hashing with key: "
+                  putStrLn $ show key2
+                  putStrLn "Yields output: "
+                  putStrLn $ show out2
+
+
+
+                                          
        
                           
 --print  (calcAT tree modulus dim a0 a1 )

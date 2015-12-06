@@ -10,19 +10,47 @@ import Text.Printf
 import System.Random
 import Data.List
 
-data Peano = Zero | Succ Peano
 
-class Church n where
-  toValue :: (Integral a) => n -> a
+data Zn a = Zn a a deriving (Show, Eq)
 
-instance Church Peano where
-  toValue Zero = 0
-  toValue (Succ a) = 1 + toValue a
 
-newtype Zn n a = Zn a
+instance (Integral a) => Num (Zn a) where
+  Zn m1 x + Zn m2 y
+            | m1 == m2 = Zn m1 $ (x + y) `mod` m1
+            | otherwise = error "Incompatible Moduli"
+  Zn m1 x * Zn m2 y
+            | m1 == m2 = Zn m1 $ (x * y) `mod` m1
+            | otherwise = error "Incompatible Moduli"
+  abs (Zn m1 x) = Zn m1 (x `mod` m1)
+  signum _ = error "Sign is meaningless"
+  fromInteger x = error "No modulus provided" 
+  negate (Zn m1 x) = Zn m1 $ (negate x) `mod` m1
 
-modM :: (Integral a, Church n) => n -> a -> Zn n a
-modM n x = Zn (x `mod` ( toValue n ))
+-- data Peano = Zero | Succ Peano deriving (Eq, Show)
+
+-- class Church n where
+--   toValue :: (Integral a) => n -> a
+--   fromValue :: (Integral a) => a -> n
+  
+-- instance Church Peano where
+--   toValue Zero = 0
+--   toValue (Succ a) = 1 + toValue a
+--   fromValue 0 = Zero
+--   fromValue x = Succ (fromValue (x-1))
+  
+-- newtype Zn n a = Zn a deriving (Eq)
+
+-- instance (Show a) => Show (Zn n a) where
+--   show (Zn a) = show a
+
+-- modM :: (Integral a) => Peano -> a -> Zn n a
+-- modM n x = Zn (x `mod` ( toValue n ))
+
+
+
+
+
+
 
 -- instance (Integral a) => Num (Zn a a) where
 --   Zn x + Zn y = 

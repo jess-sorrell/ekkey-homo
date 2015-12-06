@@ -35,14 +35,6 @@ modularRounding m target vec = map (\xs -> (map round (map (\x -> (toRational(ta
 
 
 
-isPowerOfTwo :: (Integral a) => a -> Bool
-isPowerOfTwo 1 = True
-isPowerOfTwo n
-  | n `mod` 2 == 0 = isPowerOfTwo $ n `div` 2
-  | otherwise = False
-                
-
-
 -- Given a dimension, return reasonable values for source m,
 -- target m, and random vectors a0 and a1
 parameters :: (Integral a, Random a, RandomGen g) => a -> g -> ((a, a, [[a]], [[a]]), g)

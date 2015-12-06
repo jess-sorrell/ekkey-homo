@@ -1,26 +1,42 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Poly where
 
 import Data.List
-import Data.Reflection
 import System.Random
-import Data.Proxy
-import Text.Printf
 import Zn
 
 
-{-- Polynomials are parameterized by c, the index of the cyc by which they're
-    modded out, and by a list of coefficients, least significant first --}
-data Poly c a = Poly {getCoeffs :: [a]}
+-- Polynomials are parameterized by n, the cyclotomic index of the
+-- polynomial by which they're modded out. This should always be a power
+-- of 2.
+data Poly c a = Poly c [a] deriving (Eq, Show)
 
 
-instance (Integral a, Show a) => Show (Poly c a) where
-       show x = foldl (++) "f(x) = " $ map show $ getCoeffs x
+polyFromList :: (Num a, Integral c) => c-> [a] -> Poly c a
+polyFromList c1 xs =
+  case isPowerOfTwo c1 of
+    True ->
+      if (genericLength xs < dim)
+      then Poly c1 (xs ++ genericReplicate (dim - genericLength xs) 0)
+      else reduce $ Poly c1 xs
+      where 
+        dim = c1 `div` 2
+    False ->
+      error "Invalid index for Poly"
 
 
+zeroPoly :: (Num a, Integral c) => c -> Poly c a
+zeroPoly c1 =
+  case isPowerOfTwo c1 of
+    True ->
+      Poly c1 (genericReplicate dim $fromInteger 0)
+      where dim = c1 `div` 2
+    False ->
+      error "Invalid index for Poly"
+
+      
+      
 {-- making Num a lists instances of num
  -- Code taken from https://wiki.haskell.org/Blow_your_mind --}
 instance Num a => Num [a] where               
@@ -38,74 +54,55 @@ instance Num a => Num [a] where
    negate        = map (\x -> -x)
 
 
-{-- Poly is an instance of num --}
-instance (Integral a, Reifies c Integer) => Num (Poly c a) where
-      Poly f + Poly g = Poly (modPolyByCyclo (reflect (Proxy::Proxy c)) (f + g))
-      Poly f - Poly g = Poly (modPolyByCyclo (reflect (Proxy::Proxy c)) (f-g))
-      Poly f * Poly g = Poly (modPolyByCyclo (reflect (Proxy::Proxy c)) f*g )
-      negate (Poly f) = Poly (negate f)
-      abs = id
-      signum (Poly [zero]) = Poly [0]
-      signum _ = Poly [1]
-      fromInteger x = Poly (modPolyByCyclo p [fromInteger x])
-            where p = reflect (Proxy :: Proxy c)
+-- Poly is an instance of num
+instance (Num a, Integral c) => Num (Poly c a) where
+  Poly c1 f + Poly c2 g
+          | c1 == c2 = reduce $ Poly c1 (f + g)
+          |otherwise = undefined
+  Poly c1 f - Poly c2 g 
+          | c1 == c2 = reduce $ Poly c1 (f - g)
+          |otherwise = undefined
+  Poly c1 f * Poly c2 g 
+          | c1 == c2 = reduce $ Poly c1 (f * g)
+          | otherwise = undefined
+  negate (Poly c1 f) = reduce $ Poly c1 (negate f)
+  abs = id
+  signum (Poly c1 [zero]) = Poly c1 [0]
+  signum (Poly c1 _) = Poly c1 [1]
+  fromInteger x = error "No dimension provided"
 
 
-{-- Integer represents the index of the cyclotomic polynomial that we are
-    using as a modulus. Should be a power of two or this is meaningless --}
-modPolyByCyclo :: (Integral a) => Integer -> [a] -> [a]
-modPolyByCyclo index coeffs = secondFold firstFold
--- First fold collapses the list onto twice the dimension of the result,
--- giving it the same dimension as the Integer argument.
--- Second fold collapses the list onto its proper dimension, subtracting the
--- coefficients given in the second half of the list from those in the first.
--- Since we're modding out by the nth cyclotomic polynomial, x^(n/2) + 1,
--- x^(n/2) = -1, therefore
--- the coefficients from n/2 to n-1 should be subtracted from the 0 to (n/2 -1) -- coefficients, the coefficients from n to n + (n/2 -1) should be added
--- etc, etc
-  where firstFold = [sum [ coeffs!!x | x <- [0.. (genericLength coeffs) - 1], (toInteger x) `mod` index == i ] | i <- [0..(index - 1)] ] 
-        secondFold = (\x -> (genericTake ((toInteger index) `quot` 2) x) - ( genericDrop (index `quot` (toInteger 2)) x))
+isPowerOfTwo :: (Integral a) => a -> Bool
+isPowerOfTwo 1 = True
+isPowerOfTwo n
+  | n `mod` 2 == 0 = isPowerOfTwo $ n `div` 2
+  | otherwise = False
 
 
-reduce :: (Integral a, Integral b) => a -> b -> [a] -> [a]
-reduce modulus dim coeffs = secondFold firstFold
-  where firstFold = [sum [ coeffs!!x | x <- [0.. (genericLength coeffs) - 1], (toInteger x) `mod` (toInteger dim) == (toInteger i) ] `mod` modulus | i <- [0..(dim - 1)]  ] 
-        secondFold = (\ys -> (genericTake dim ys) - ( genericDrop dim ys))
+reduce :: (Num a, Integral c) => Poly c a -> Poly c a
+reduce (Poly c1 f) =
+  case isPowerOfTwo c1 of
+    True -> Poly c1 $ secondFold firstFold
+      where 
+          dim = c1 `div` 2
+          firstFold =
+            [sum [ (genericIndex f x) | x <- [0..(genericLength f) - 1], x `mod` c1 == i] | i <- [0..(c1 - 1)]  ]
+          secondFold =
+            (\ys -> (genericTake dim ys) - ( genericDrop dim ys))          
+    False -> error "Invalid index for Poly"
+    
+
+
+-- Poly is an instance of random, but an index will need to be provided
+instance (Random a, Num a, Integral c) => Random (c -> Poly c a) where
+  random g =
+    let (g', g'') = split g
+    in ((\x ->
+          Poly x $ genericTake x $ randoms g'), g'')
+  randomR = error "Range is not meaningfully defined for Poly"
 
 
 
-
-convolve :: (Integral a, Integral b) => a -> b -> [a] -> [a] -> [a]
-convolve modulus dim p1 p2 = reduce modulus dim (p1*p2)
-
-
-likePolyProxy :: Proxy c -> Poly c a -> Poly c a
-likePolyProxy _ = id
-
-
-polyToList :: Integral a => Poly c a -> [a]
-polyToList (Poly x) = map fromIntegral x
-
-
-withCycl :: Integral a => a -> (forall c. Reifies c a => Poly c a) -> [a]
-withCycl dim poly =
-  reify dim $ \proxy -> polyToList . likePolyProxy proxy $ poly 
-
-
-znListToIntList :: Integral a => [Zn s a] -> [a]
-znListToIntList [Zn x] = [(fromIntegral x)]
-znListToIntList ((Zn x):zns) = (fromIntegral x):(znListToIntList zns)
-
-
--- | Convince the compiler that the phantom type in the proxy
--- | is the same as the one in the Zn
-likeProxyZns :: Proxy s -> [Zn s a] -> [Zn s a]
-likeProxyZns _ = id
-
-
-withZnList :: Integral a => a -> (forall s. Reifies s a => [Zn s a]) -> [a]
-withZnList modulus zs =
-  reify modulus $ \proxy -> znListToIntList.likeProxyZns proxy $ zs
-                            
+                
 
 

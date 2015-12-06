@@ -58,16 +58,25 @@ keyedRingSwitch s modulus dim target vec =
 
 
 
+isPowerOfTwo :: (Integral a) => a -> Bool
+isPowerOfTwo 1 = True
+isPowerOfTwo n
+  | n `mod` 2 == 0 = isPowerOfTwo $ n `div` 2
+  | otherwise = False
+                
+
+
 -- Given a dimension, return reasonable values for source modulus,
 -- target modulus, and random vectors a0 and a1
 parameters :: (Integral a, Random a, RandomGen g) => a -> g -> ((a, a, [[a]], [[a]]), g)
 parameters dim gen =
-  let (modulus, g') = genRandModulus dim gen
-      (target, g'') = getRandom modulus g' 
-      l = ceiling $ logBase 2 $ fromIntegral modulus
-      (a0, g''') = getRandomVectors modulus dim l g''
-      (a1, g'''') = getRandomVectors modulus dim l g'''
-  in ((modulus, target, a0, a1), g'''')
+  case  isPowerOfTwo dim of
+    True -> let (modulus, g') = genRandModulus dim gen
+                (target, g'') = getRandom modulus g' 
+                l = ceiling $ logBase 2 $ fromIntegral modulus
+                (a0, g''') = getRandomVectors modulus dim l g''
+                (a1, g'''') = getRandomVectors modulus dim l g'''
+            in ((modulus, target, a0, a1), g'''')
      
 
 main :: IO ()

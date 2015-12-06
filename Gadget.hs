@@ -12,11 +12,6 @@ import Zn
 import Poly
 
 
-get_get_gadget :: (Integral a) => a -> [a] 
-get_get_gadget modulus =
-  let l = floor $ logBase 2 $ fromIntegral modulus
-  in [ 2^i | i <- [0..l]]
-
 
 go_go_gadget_elem :: (Integral a) => a -> [a]
 go_go_gadget_elem 0 = [0]
@@ -44,6 +39,7 @@ go_go_gadget_invector :: (Integral a) => a -> [[a]] -> [[[a]]]
 go_go_gadget_invector modulus vec = map (go_go_gadget_inverse modulus) vec
 
 
+
 go_go_gadget_pad :: (Integral a, Integral b) => b -> a -> [a]
 go_go_gadget_pad modulus x =
   let xs = go_go_gadget_elem x
@@ -53,12 +49,15 @@ go_go_gadget_pad modulus x =
     ([0 | i <- [0..pad]]++xs)
 
 
+
 go_go_gadget_compose :: (Integral a, Integral b) => a -> b -> [[a]] -> [[[a]]] -> [[a]]
 go_go_gadget_compose modulus dim row mat = map (polydot modulus dim row) mat
 
 
+
 polydot :: (Integral a, Integral b) => a -> b -> [[a]] -> [[a]] -> [a]
 polydot modulus dim v1 v2 = reduce modulus dim $ foldl (+) [0 | i <- [0..((length v1)-1)]] $ zipWith (convolve modulus dim) v1 v2
+
 
 
 dot :: (Integral a, Integral b) => a -> b -> [a] -> [[a]] -> [[a]]

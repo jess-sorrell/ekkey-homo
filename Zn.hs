@@ -69,12 +69,12 @@ getRandoms modulus num gen =
 
 
 
-getRandomVectors :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> a -> g -> ([[a]], g)
-getRandomVectors modulus dim 0 gen = ([], gen)
-getRandomVectors modulus dim num gen =
+randomVectors :: (Integral a, Integral b, Random a, RandomGen g) => a -> b -> a -> g -> ([[a]], g)
+randomVectors modulus dim 0 gen = ([], gen)
+randomVectors modulus dim num gen =
   let (vect, gen') = getRandoms modulus dim gen
   in
-   let (vects, gen'') = getRandomVectors modulus dim (num-1) gen'
+   let (vects, gen'') = randomVectors modulus dim (num-1) gen'
    in (vect:vects, gen'')
 
   

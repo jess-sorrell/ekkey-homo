@@ -102,15 +102,6 @@ instance (Random a, Num a, Integral c) => Random (c -> Poly c a) where
   randomR = error "Range is not meaningfully defined for Poly"
 
 
--- Separate function for more explicit multiplication of Polynomials
--- in Rq. Unclear on why this is necessary at present, but multiplication
--- appears to require an implementation of fromInteger.
-polyMult :: (Integral a, Integral c) =>
-            Poly c (Zn a) -> Poly c (Zn a) -> Poly c (Zn a)
-polyMult (Poly c1 z1s@((Zn m1 x):xs)) (Poly c2 z2s@((Zn m2 y):ys))
-  | (c1 == c2) && (m1 == m2) = Poly c1 (z1s*z2s)
-  | (c1 == c2) = error "Mismatched moduli"
-  | otherwise = error "Mismatched index"
 
 
 

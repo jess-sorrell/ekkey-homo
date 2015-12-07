@@ -13,12 +13,12 @@ import Zn
 data Poly c a = Poly c [a] deriving (Eq, Show)
 
 
-polyFromList :: (Num a, Integral c) => c-> [a] -> Poly c a
-polyFromList c1 xs =
+polyFromList :: (Integral a, Integral c) => c-> [Zn a] -> Poly c (Zn a)
+polyFromList c1 ((Zn m1 x):xs) =
   case isPowerOfTwo c1 of
     True ->
       if (genericLength xs < dim)
-      then Poly c1 (xs ++ genericReplicate (dim - genericLength xs) 0)
+      then Poly c1 (xs ++ genericReplicate (dim - genericLength xs)(Zn m1 0))
       else reduce $ Poly c1 xs
       where 
         dim = c1 `div` 2
@@ -26,11 +26,11 @@ polyFromList c1 xs =
       error "Invalid index for Poly"
 
 
-zeroPoly :: (Num a, Integral c) => c -> Poly c a
-zeroPoly c1 =
+zeroZnPoly :: (Num a, Integral c) => c -> a -> Poly c (Zn a)
+zeroZnPoly c1 m1 =
   case isPowerOfTwo c1 of
     True ->
-      Poly c1 (genericReplicate dim $fromInteger 0)
+      Poly c1 $ genericReplicate dim $ Zn m1 0
       where dim = c1 `div` 2
     False ->
       error "Invalid index for Poly"
@@ -54,8 +54,8 @@ instance Num a => Num [a] where
    negate        = map (\x -> -x)
 
 
--- Poly is an instance of num
-instance (Num a, Integral c) => Num (Poly c a) where
+-- Poly c (Zn a) is an instance of num
+instance (Integral a, Integral c) => Num (Poly c (Zn a)) where
   Poly c1 f + Poly c2 g
           | c1 == c2 = reduce $ Poly c1 (f + g)
           |otherwise = undefined
@@ -79,14 +79,14 @@ isPowerOfTwo n
   | otherwise = False
 
 
-reduce :: (Num a, Integral c) => Poly c a -> Poly c a
-reduce (Poly c1 f) =
+reduce :: (Integral a, Integral c) => Poly c (Zn a) -> Poly c (Zn a)
+reduce (Poly c1 f@((Zn m1 x):xs)) =
   case isPowerOfTwo c1 of
     True -> Poly c1 $ secondFold firstFold
       where 
           dim = c1 `div` 2
           firstFold =
-            [sum [ (genericIndex f x) | x <- [0..(genericLength f) - 1], x `mod` c1 == i] | i <- [0..(c1 - 1)]  ]
+            [foldl (+) (Zn m1 0) [ (genericIndex f x) | x <- [0..(genericLength f) - 1], x `mod` c1 == i] | i <- [0..(c1 - 1)]  ]
           secondFold =
             (\ys -> (genericTake dim ys) - ( genericDrop dim ys))          
     False -> error "Invalid index for Poly"
@@ -102,7 +102,15 @@ instance (Random a, Num a, Integral c) => Random (c -> Poly c a) where
   randomR = error "Range is not meaningfully defined for Poly"
 
 
+-- Separate function for more explicit multiplication of Polynomials
+-- in Rq. Unclear on why this is necessary at present, but multiplication
+-- appears to require an implementation of fromInteger.
+polyMult :: (Integral a, Integral c) =>
+            Poly c (Zn a) -> Poly c (Zn a) -> Poly c (Zn a)
+polyMult (Poly c1 z1s@((Zn m1 x):xs)) (Poly c2 z2s@((Zn m2 y):ys))
+  | (c1 == c2) && (m1 == m2) = Poly c1 (z1s*z2s)
+  | (c1 == c2) = error "Mismatched moduli"
+  | otherwise = error "Mismatched index"
 
-                
 
 

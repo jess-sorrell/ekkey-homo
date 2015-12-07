@@ -16,7 +16,7 @@ instance (Integral a) => Num (Zn a) where
             | otherwise = error "Incompatible Moduli"
   abs (Zn m1 x) = Zn m1 (x `mod` m1)
   signum _ = error "Sign is meaningless"
-  fromInteger x = error "No modulus provided" 
+  fromInteger x = error "No modulus provided"
   negate (Zn m1 x) = Zn m1 $ (negate x) `mod` m1
 
 

@@ -4,8 +4,14 @@ module Zn where
 
 import System.Random
 
-data Zn a = Zn a a deriving (Show, Eq, Ord)
+data Zn a = Zn a a deriving (Eq, Ord)
 
+
+-- Zn is an instance of Show
+instance (Show a) => Show (Zn a) where
+  show (Zn m1 x) = show x
+
+  
 -- Zn is an instance of Num
 instance (Integral a) => Num (Zn a) where
   Zn m1 x + Zn m2 y

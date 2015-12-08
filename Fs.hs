@@ -90,26 +90,26 @@ main = do putStrLn "Seed (Int): "
               out1 = functionFs msg c key1 $ read seed
               out2 = functionFs msg c key2 $ read seed
 
-            in do putStrLn "Using base m "
-                  putStrLn (show m)
-                  putStrLn "Using target m "
-                  putStrLn (show target)
+            in do putStrLn "*********************************** \n"
+                  putStrLn $ "Using base modulus " ++ (show m)
+                  putStrLn $ "Using target modulus" ++ (show target) ++"\n"
+                  putStrLn "*********************************** \n"
                   putStrLn "F(x) with full key "
                   putStrLn $ show key
                   putStrLn "Yields output: "
-                  putStrLn $ show output
+                  putStrLn $ (show output) ++ "\n"
+                  putStrLn "*********************************** \n"
                   putStrLn "F(x) with key: "
                   putStrLn $ show key1
                   putStrLn "Yields output: "
-                  putStrLn $ show out1
+                  putStrLn $ (show out1) ++ "\n"
+                  putStrLn "*********************************** \n"
                   putStrLn "F(x) with key: "
                   putStrLn $ show key2
                   putStrLn "Yields output: "
-                  putStrLn $ show out2
-
+                  putStrLn $ (show out2)
 
 
                                           
        
                           
---print  (calcAT tree m dim a0 a1 )

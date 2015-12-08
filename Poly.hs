@@ -10,9 +10,15 @@ import Zn
 -- Polynomials are parameterized by n, the cyclotomic index of the
 -- polynomial by which they're modded out. This should always be a power
 -- of 2.
-data Poly c a = Poly c [a] deriving (Eq, Show)
+data Poly c a = Poly c [a] deriving (Eq)
 
 
+
+-- Poly is an instance of show
+instance (Show a) => Show (Poly c a) where
+  show (Poly c1 xs) = show xs
+
+  
 polyFromList :: (Integral a, Integral c) => c-> [Zn a] -> Poly c (Zn a)
 polyFromList c1 ((Zn m1 x):xs) =
   case isPowerOfTwo c1 of

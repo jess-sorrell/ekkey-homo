@@ -9,23 +9,23 @@ import Poly
 
 
 
-gInv' :: (Integral a, Integral c) => 
+gInvPoly' :: (Integral a, Integral c) => 
         Poly c (Zn a) -> [Poly c (Zn a)]
-gInv' (Poly c1 zs@((Zn m1 x):xs))
+gInvPoly' (Poly c1 zs@((Zn m1 x):xs))
   | (filter ( <= (Zn m1 1)) zs) == zs = [Poly c1 zs]
-  | otherwise = (Poly c1 $ map rem2 zs):(gInv' $ Poly c1 $ map quot2 zs)
+  | otherwise = (Poly c1 $ map rem2 zs):(gInvPoly' $ Poly c1 $ map quot2 zs)
 
 
 -- Binary expansion of coefficients of given polynomial
 gInvPoly ::  (Integral a, Integral c, Integral s) => 
          Poly c (Zn a) -> Vec s (Poly c (Zn a))
-gInvPoly p = fromZnPolyList $ gInv' p
+gInvPoly p = fromZnPolyList $ gInvPoly' p
 
 
 
-gInvVec :: (Integral a, Integral c, Integral s) =>
+gInv :: (Integral a, Integral c, Integral s) =>
            Vec s (Poly c (Zn a)) -> Vec s (Vec s (Poly c (Zn a)))
-gInvVec (Vec dim ps) =
+gInv (Vec dim ps) =
   let vs = map gInvPoly ps
       d = genericLength vs
   in

@@ -24,14 +24,25 @@ instance (Integral a) => Num (Zn a) where
 instance (Integral a, Random a) => Random (a -> Zn a) where
   random g =
     let (g', g'') = split g
-    in ((\x ->
-          Zn x $ fst $ randomR (0, x-1) g'), g'')
+    in ((\m ->
+          Zn m $ fst $ randomR (0, m-1) g'), g'')
   randomR = error "Range of (a -> Zn a) undefined"
+
+
+randomZn :: (Integral a, Random a, RandomGen g) => g -> a -> (Zn a, g)
+randomZn g m1 =
+  let (f, g') = random g
+  in (f m1, g')
 
 
 -- For binary expansion of Zn
 quot2 :: (Integral a) => Zn a -> Zn a
-quot2 (Zn m1 x) = Zn m1 $ quot x $ fromInteger 2
+quot2 (Zn m1 x) = Zn m1 $ quot x 2
 
 rem2 :: (Integral a) => Zn a -> Zn a
-rem2 (Zn m1 x) = Zn m1 $ rem x $ fromInteger 2
+rem2 (Zn m1 x) = Zn m1 $ rem x 2
+
+
+-- Switch modulus
+switch :: (Integral a) => a -> Zn a -> Zn a
+switch m1 (Zn m2 x) = Zn m1 $ round ( toRational m1 * toRational x/toRational m2) `mod` m1

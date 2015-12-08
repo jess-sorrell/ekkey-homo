@@ -93,15 +93,34 @@ reduce (Poly c1 f@((Zn m1 x):xs)) =
     
 
 
--- Poly is an instance of random, but an index will need to be provided
-instance (Random a, Num a, Integral c) => Random (c -> Poly c a) where
+-- Poly is an instance of random, but an index and modulus  will need to
+-- be provided
+instance (Random a, Integral a, Integral c) =>
+         Random (c -> a -> Poly c (Zn a)) where
   random g =
     let (g', g'') = split g
-    in ((\x ->
-          Poly x $ genericTake x $ randoms g'), g'')
+    in ((\c1 m -> case isPowerOfTwo c1 of
+            True -> Poly c1 $ map (\f -> f m)
+                    (genericTake (c1 `div` 2) (randoms g'))), g'')
+
   randomR = error "Range is not meaningfully defined for Poly"
 
 
+randomPoly :: (RandomGen g, Random a, Integral a, Integral c) =>
+              g -> c -> a -> (Poly c (Zn a), g)
+randomPoly gen c1 m =
+  let ( zns, gen') = 
+        foldl (\(zs, g) _ ->
+                let (z, g') = randomZn g m
+                in ( (z:zs), g')) ([], gen) [1..(c1 `div` 2)]
+  in (Poly c1 zns, gen')
+  
+
+-- Modulus switching for a polynomial
+polySwitch :: (Integral a, Integral c) => a -> Poly c (Zn a) -> Poly c (Zn a)
+polySwitch targ (Poly c1 p) =
+  Poly c1 $ map (switch targ) p
 
 
-
+polyLength :: (Integral c) => Poly c a -> c
+polyLength (Poly c1 xs) = genericLength xs
